@@ -115,14 +115,19 @@ def api_json(url: str, cookie: str) -> dict:
             req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=20) as r:
                 return json.loads(r.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
+        except (urllib.error.HTTPError, urllib.error.URLError) as e:
             last_err = e
-            if e.code in (412, 429) or e.code >= 500:
-                wait = 15 * (attempt + 1)
-                print(f"[api] HTTP {e.code}，退避 {wait}s 后重试({attempt + 1}/4)...", flush=True)
-                time.sleep(wait)
+            if isinstance(e, urllib.error.HTTPError):
+                if e.code in (412, 429) or e.code >= 500:
+                    wait = 15 * (attempt + 1)
+                    print(f"[api] HTTP {e.code}，退避 {wait}s 后重试({attempt + 1}/4)...", flush=True)
+                    time.sleep(wait)
+                else:
+                    raise
             else:
-                raise
+                wait = 15 * (attempt + 1)
+                print(f"[api] 网络错误 {e}，退避 {wait}s 后重试({attempt + 1}/4)...", flush=True)
+                time.sleep(wait)
     raise SystemExit(f"API 重试仍失败: {url} ({last_err})")
 
 
@@ -136,11 +141,15 @@ def run(cmd: list[str]) -> None:
 
 
 def main() -> None:
-    args = sys.argv[1:]
-    if not args:
-        raise SystemExit(__doc__)
-    src = args[0]
-    cli_out = args[args.index("--out") + 1] if "--out" in args else None
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="抓取B站视频：元信息 + 字幕(若有) + 音频 + 16k wav",
+    )
+    ap.add_argument("src", help="BV号或完整视频 URL")
+    ap.add_argument("--out", default=None, help="输出目录（默认 config media_dir 或 ./output）")
+    ns = ap.parse_args()
+    src = ns.src
+    cli_out = ns.out
     outdir = get_media_dir(cli_out) if cli_out else DEFAULT_OUT
     os.makedirs(outdir, exist_ok=True)
     m = re.search(r"BV[0-9A-Za-z]{10}", src)

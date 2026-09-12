@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.3.2 — 2026-09-12
+
+- Decouple `python main.py --help` from config / PyYAML loading.
+- Empty `preferred_ups` in `config.example.yaml` (commented examples only).
+- Network calls catch `URLError` with retry/backoff; `argparse` for `--out`.
+- Platform `.srt`/`.vtt` used for draft outline scaffolding; distinguish `--skip-comments`.
+- `find_up` prints usage and exits 2 with no args; ASR temp WAV cleaned in `finally`.
+- README: Python 3.10–3.12 badge, local-only `jar.txt` note, GitHub Description/Topics snippet.
+- SKILL frontmatter: Chinese triggers first; version/license moved to body.
+
 ## v1.3.1 — 2026-09-11
 
 - Legal / compliance: `NOTICE.md`, README Legal section; WBI reverse-engineering disclaimer.

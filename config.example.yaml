@@ -4,15 +4,12 @@
 # Default media / working output directory
 media_dir: "./output"
 
-# Preferred Bilibili UP creators (used when searching by title)
-preferred_ups:
-  - "毛选思维"
-  - "一知君"
-  - "无限进化的Doria"
-  - "疯狂心理学"
-  - "亿点点心理学"
-  - "YouTube深度访谈"
-  - "歌白说Geslook"
+# Preferred Bilibili UP creators (used when searching by title).
+# Keep empty by default; put personal lists only in local config.yaml.
+preferred_ups: []
+# 示例 / Example:
+# - "示例UP-A"
+# - "示例UP-B"
 
 # Optional: path to your Obsidian vault (literature / permanent cards destination)
 # Leave empty to keep drafts only under media_dir.

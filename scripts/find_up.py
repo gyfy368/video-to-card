@@ -24,16 +24,27 @@ def get_json(url: str) -> dict:
             req = urllib.request.Request(url, headers=UA)
             with urllib.request.urlopen(req, timeout=15) as r:
                 return json.loads(r.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
+        except (urllib.error.HTTPError, urllib.error.URLError) as e:
             last = e
-            if e.code in (412, 429) or e.code >= 500:
-                time.sleep(10 * (attempt + 1))
+            if isinstance(e, urllib.error.HTTPError):
+                if e.code in (412, 429) or e.code >= 500:
+                    wait = 10 * (attempt + 1)
+                    print(f"[find_up] HTTP {e.code}，退避 {wait}s 后重试({attempt + 1}/3)...", flush=True)
+                    time.sleep(wait)
+                else:
+                    raise
             else:
-                raise
+                wait = 10 * (attempt + 1)
+                print(f"[find_up] 网络错误 {e}，退避 {wait}s 后重试({attempt + 1}/3)...", flush=True)
+                time.sleep(wait)
     raise last
 
 
 def main() -> None:
+    if len(sys.argv) < 2:
+        print("用法: python find_up.py <aid1> [aid2 ...]", file=sys.stderr)
+        print("Usage: python find_up.py <aid1> [aid2 ...]", file=sys.stderr)
+        raise SystemExit(2)
     for aid in sys.argv[1:]:
         try:
             d = get_json(f"https://api.bilibili.com/x/web-interface/view?aid={aid}")

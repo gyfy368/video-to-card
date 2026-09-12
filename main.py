@@ -84,21 +84,43 @@ def _excerpt_comments(outdir: Path, bvid: str, limit: int = 10) -> list[str]:
     return lines
 
 
+def _iter_subtitle_paths(outdir: Path, bvid: str) -> list[Path]:
+    """Prefer ASR SRT, then platform .srt/.vtt whose names start with bvid."""
+    paths: list[Path] = []
+    asr_srt = outdir / f"{bvid}_转写.srt"
+    if asr_srt.is_file():
+        paths.append(asr_srt)
+    if outdir.is_dir():
+        for p in sorted(outdir.iterdir()):
+            if not p.is_file() or p in paths:
+                continue
+            name = p.name
+            if name.startswith(bvid) and name.endswith((".srt", ".vtt")):
+                paths.append(p)
+    return paths
+
+
 def _srt_outline_hints(outdir: Path, bvid: str, max_items: int = 8) -> list[str]:
-    """Pull a few timestamped lines from SRT for draft outline scaffolding."""
-    for name in (f"{bvid}_转写.srt",):
-        path = outdir / name
-        if not path.is_file():
-            continue
+    """Pull timestamped lines from ASR or platform SRT/VTT for outline scaffolding."""
+    for path in _iter_subtitle_paths(outdir, bvid):
         blocks = _read_text(path).strip().split("\n\n")
-        hints = []
+        hints: list[str] = []
         for block in blocks:
             parts = block.strip().splitlines()
-            if len(parts) < 3:
+            if len(parts) < 2:
                 continue
-            timing = parts[1]
-            text = " ".join(parts[2:]).strip()
-            m = re.match(r"(\d{2}):(\d{2}):(\d{2})", timing)
+            # SRT: index / timing / text…; VTT cue: timing / text… (or note lines)
+            if "-->" in parts[0]:
+                timing, text_lines = parts[0], parts[1:]
+            elif len(parts) >= 3 and "-->" in parts[1]:
+                timing, text_lines = parts[1], parts[2:]
+            else:
+                continue
+            text = " ".join(text_lines).strip()
+            text = re.sub(r"</?c[^>]*>", "", text).strip()
+            if not text or text in ("WEBVTT",) or text.startswith(("Kind:", "Language:", "NOTE")):
+                continue
+            m = re.match(r"(\d{2}):(\d{2}):(\d{2})", timing.strip())
             if not m:
                 continue
             h, mi, s = (int(m.group(1)), int(m.group(2)), int(m.group(3)))
@@ -106,7 +128,8 @@ def _srt_outline_hints(outdir: Path, bvid: str, max_items: int = 8) -> list[str]
             hints.append(f"* `{mmss}` - **…**：{text[:80]}{'…' if len(text) > 80 else ''}")
             if len(hints) >= max_items:
                 break
-        return hints
+        if hints:
+            return hints
     return []
 
 
@@ -115,7 +138,7 @@ def _yaml_escape(val: str) -> str:
     return json.dumps(val or "", ensure_ascii=False)
 
 
-def _write_draft_card(outdir: Path, bvid: str) -> Path:
+def _write_draft_card(outdir: Path, bvid: str, *, skip_comments: bool = False) -> Path:
     meta = _load_meta(outdir, bvid)
     title = meta.get("title") or bvid
     owner = meta.get("owner") or "未知UP"
@@ -126,7 +149,12 @@ def _write_draft_card(outdir: Path, bvid: str) -> Path:
     if not outline:
         outline = ["* `00:00` - **待整理**：请根据转写稿填写核心逻辑大纲（带时间戳）"]
 
-    comment_block = "\n".join(f"* {c}" for c in comments) if comments else "* 评论区未取到"
+    if comments:
+        comment_block = "\n".join(f"* {c}" for c in comments)
+    elif skip_comments:
+        comment_block = "* 已跳过（--skip-comments）"
+    else:
+        comment_block = "* 评论区未取到"
     preview = (transcript[:1200] + ("…" if len(transcript) > 1200 else "")) if transcript else "（暂无转写稿）"
     today = date.today().isoformat()
 
@@ -192,6 +220,7 @@ status: draft
 
 
 def cmd_process(args: argparse.Namespace) -> int:
+    load_config()
     bvid = _parse_bvid(args.src)
     outdir = Path(get_media_dir(args.out))
     outdir.mkdir(parents=True, exist_ok=True)
@@ -246,7 +275,7 @@ def cmd_process(args: argparse.Namespace) -> int:
     else:
         print("[process] 已有字幕/转写，跳过 ASR", flush=True)
 
-    draft = _write_draft_card(outdir, bvid)
+    draft = _write_draft_card(outdir, bvid, skip_comments=bool(args.skip_comments))
     print(f"[process] 文献卡草案已写入: {draft}", flush=True)
     ups = get_preferred_ups()
     if ups:
@@ -257,10 +286,12 @@ def cmd_process(args: argparse.Namespace) -> int:
 
 
 def cmd_search(args: argparse.Namespace) -> int:
+    load_config()
     return _run_script("search_bili.py", [args.keyword, str(args.limit)])
 
 
 def cmd_space(args: argparse.Namespace) -> int:
+    load_config()
     return _run_script("bili_space.py", [str(args.mid), str(args.pages)])
 
 
@@ -327,7 +358,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    load_config()  # warm defaults; validates pyyaml only if config file present
+    # Parse first so `python main.py --help` works even if PyYAML/config is broken.
     parser = build_parser()
     args = parser.parse_args(argv)
     return int(args.func(args) or 0)

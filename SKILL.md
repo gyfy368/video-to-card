@@ -1,8 +1,6 @@
 ---
 name: video-to-card
-description: Use when the user provides a Bilibili (or other) video link, UP space link, or only "UP name + video title" and wants Obsidian/Zettelkasten literature notes — search preferred UPs, fetch audio/comments, transcribe with ffmpeg + FunASR (Paraformer), produce an audiovisual literature card for the vault, and discuss candidate permanent cards. Also trigger for 视频转写, 爬视频做卡片, B站视频整理成笔记, 提取字幕, 把视频变成卡片, Obsidian 文献卡, even if they do not say "转卡片".
-version: 1.3.1
-license: MIT
+description: 视频转卡片工作流：用户提供B站等平台的视频链接、UP主空间链接，或只给"UP主+视频名称"时使用——按优先UP主清单搜索定位视频，抓取视频音频与评论区热评，用 ffmpeg + FunASR(Paraformer) 本地转写得到字幕，整理成 Obsidian 音视频文献卡，并提炼候选永久卡片与用户讨论。只要用户提到"视频转写""爬视频做卡片""B站视频整理成笔记""提取这个视频的字幕""把这个视频变成卡片""Obsidian 文献卡"等，即使没明说"转卡片"，也应加载本技能。Also for Bilibili/YouTube links → Obsidian Zettelkasten literature cards via fetch, comments, and FunASR.
 ---
 
 # 视频转卡片（Video → 字幕 → 文献卡 → 永久卡片讨论）
@@ -10,6 +8,8 @@ license: MIT
 把用户给的视频变成三层产物：**原始转写稿 → 音视频文献卡（入知识库）→ 候选永久卡片（仅讨论，批准后才建卡）**。
 
 本仓库同时是 **CLI 工具**（`python main.py`）与 **Agent Skill**（本文件）。
+
+**版本 / Version**：1.3.2　|　**许可 / License**：MIT
 
 ## Obsidian × Zettelkasten：核心定位（先读）
 
@@ -60,8 +60,9 @@ python "$SKILL_DIR/main.py" search "<UP主> <标题关键词>" --limit 10
 或底层脚本 / yt-dlp：
 
 ```bash
-# 用 yt-dlp 搜索（不碰 B站 web-interface 搜索 API，几乎不会被 412）
-yt-dlp --cookies "$SKILL_DIR/scripts/jar.txt" --flat-playlist --print "%(id)s %(title)s" "bilisearch8:<UP主> <标题关键词>"
+# 多数公开内容可不需要 Cookie；仅登录可见内容才加 --cookies
+yt-dlp --flat-playlist --print "%(id)s %(title)s" "bilisearch8:<UP主> <标题关键词>"
+# 可选：yt-dlp --cookies "$SKILL_DIR/scripts/jar.txt" ...
 
 python "$SKILL_DIR/scripts/search_bili.py" "<关键词>" 10
 ```
@@ -72,7 +73,7 @@ python "$SKILL_DIR/scripts/search_bili.py" "<关键词>" 10
 
 ### 优先UP主清单
 
-默认见 `config.example.yaml` / `config.yaml` 的 `preferred_ups`（代码默认为空列表；示例配置含若干常见 UP）。搜索结果出现相似标题/搬运号时以上 UP 优先；用户认可的新 UP 追加进**本地** `config.yaml`，勿写死在对话记忆之外。
+默认见本地 `config.yaml` 的 `preferred_ups`（代码与 `config.example.yaml` 默认为空列表；示例注释见该文件）。搜索结果出现相似标题/搬运号时以上 UP 优先；用户认可的新 UP 追加进**本地** `config.yaml`，勿写死在对话记忆之外。
 
 ## 第 1 步：抓取（一条命令，自动带 cookie 与风控退避）
 
@@ -92,7 +93,7 @@ python "$SKILL_DIR/scripts/fetch_bili.py" <BV号或URL> --out "<media_dir绝对�
 
 脚本自动完成：元信息（view API，限流时降级 yt-dlp info.json）→ 尝试平台字幕 → 无字幕则下载音频（yt-dlp，bestaudio）→ ffmpeg 转 16k 单声道 wav。产物都在 `--out` 目录下，前缀为 BV 号。风控期可改用 `scripts/fetch_bili_api.py`（`main.py process` 在主通道失败时会自动尝试）。
 
-Cookie：将 `scripts/jar.txt.example` 复制为 `scripts/jar.txt`（已 gitignore）。无文件时脚本可尝试引导匿名 buvid。详见 `SECURITY.md`。
+Cookie：将 `scripts/jar.txt.example` 复制为 `scripts/jar.txt`（已 gitignore）。无文件时抓取脚本可尝试引导匿名 buvid。详见 `SECURITY.md`。
 
 ## 第 1.5 步：评论区摘取（默认执行）
 
@@ -102,7 +103,7 @@ python "$SKILL_DIR/scripts/fetch_comments.py" <BV号> --out "<media_dir绝对路
 
 - 产出 `<bvid>_comments.txt`：按热度排序的热评（点赞数 | 用户 | 内容）。写入文献卡时**脱敏展示**（文档示例用 `@用户A`）。
 - 评论只作理解与讨论素材：挑 5~10 条有信息量的进草案「💬 高赞评论摘录」节（保留点赞数），用来观察听众的共鸣点与质疑点；**不把评论当讲者观点引证**。
-- 接口被限流或视频无评论时：非 `--strict` 下草案记「评论区未取到」并继续；`--strict` 下失败即退出。
+- 接口被限流或视频无评论时：非 `--strict` 下草案记「评论区未取到」并继续；显式 `--skip-comments` 时记「已跳过（--skip-comments）」；`--strict` 下失败即退出。
 
 ## 第 2 步：转写（FunASR/Paraformer，CPU 可跑）
 
@@ -112,7 +113,7 @@ python "$SKILL_DIR/scripts/run_asr.py" "<media_dir绝对路径>" <bvid1> [bvid2 
 ```
 
 - 产出 `<bvid>_转写.txt`（带标点全文）与 `<bvid>_转写.srt`（句级时间戳，来自 sentence_info；否则字级 timestamp 合成）。
-- 若第 1 步已产出 `<bvid>_subtitle.txt`（平台自带字幕），跳过转写，直接用平台字幕。
+- 若第 1 步已产出 `<bvid>_subtitle.txt`（平台自带字幕），跳过转写，直接用平台字幕；大纲时间戳亦会尝试读取平台 `<bvid>*.srt` / `*.vtt`。
 - 参考速度：CPU 上约为音频时长的 0.2~0.5 倍；长视频批量转写时按顺序跑，别并行开多个 FunASR 进程。
 - 用户指定其他平台（YouTube 等）时：直接用 yt-dlp 下载音频，其余步骤不变。
 - ASR 模型名可在 `config.yaml` 的 `asr` 段覆盖。依赖说明见 README（base vs asr、CPU/GPU）。
@@ -152,7 +153,7 @@ python "$SKILL_DIR/scripts/run_asr.py" "<media_dir绝对路径>" <bvid1> [bvid2 
 
 ## 风控与故障（踩过的坑）
 
-- **B站 412 限流**：停止请求静置 3~5 分钟 → 删除 `scripts/jar.txt` 重新生成 buvid → 重试；脚本已内置退避与元信息降级。宁可慢，不要并发轰炸。
+- **B站 412 限流**：停止请求静置 3~5 分钟 → 删除 `scripts/jar.txt` 重新生成 buvid → 重试；脚本已内置退避与元信息降级。宁可慢，不要并发轰炸。**禁止**并发跑多个 BV；`space --pages` 默认 1，需要翻页须先问用户；412 后必须停 3–5 分钟，不得擅自缩短 sleep 或改代码强刷。
 - **ffmpeg 找不到**：PATH →（仅 Windows）winget Links → imageio-ffmpeg；都不在就 `pip install imageio-ffmpeg`。
 - **转写质量**：专有名词可能错；交付前校对。
 - **多P视频**：脚本只取 P1；整组时逐 P 调用。
@@ -160,8 +161,8 @@ python "$SKILL_DIR/scripts/run_asr.py" "<media_dir绝对路径>" <bvid1> [bvid2 
 
 ## 维护记录（历史）
 
-- 2026-09-11 v1.3.1：合规 NOTICE/SECURITY；依赖拆分；跨平台探测；`--strict`；路径相对 `$SKILL_DIR` / config。
-- 2026-09-06 v1.2：新增评论区热评、按名称找视频与优先 UP 清单、文献卡「💬 高赞评论摘录」。
 - 2026-09-03 v1.1：字级 timestamp 合成 SRT；字幕/音频扩展名白名单；ASR 校对附注。
+- 2026-09-06 v1.2：新增评论区热评、按名称找视频与优先 UP 清单、文献卡「💬 高赞评论摘录」。
 - 2026-09-07 v1.3：新旧卡片逻辑关系编织（查重后显式关系、双向落地、允许冲突）。
-- 2026-09-11 Scheme B：开源双模（CLI `main.py` + Skill）；配置解耦；MIT 与 README。
+- 2026-09-11 Scheme B / v1.3.1：开源双模（CLI `main.py` + Skill）；配置解耦；合规 NOTICE/SECURITY；依赖拆分；`--strict`。
+- 2026-09-12 v1.3.2：CLI `--help` 与配置解耦；网络 URLError 退避；平台字幕大纲；示例 UP 清单清空；Cookie 搜索示例改为可选。

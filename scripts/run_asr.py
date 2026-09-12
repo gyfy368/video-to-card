@@ -188,33 +188,39 @@ def main() -> None:
         tmp = os.path.join(tempfile.gettempdir(), "bili2card", bvid + ".wav")
         os.makedirs(os.path.dirname(tmp), exist_ok=True)
         shutil.copyfile(wav, tmp)
-        print(f"[{bvid}] ASR 开始...", flush=True)
-        res = model.generate(input=tmp, batch_size_s=300, hotword="")
-        r = res[0]
-        text = r.get("text", "")
-        with open(os.path.join(d, f"{bvid}_转写.txt"), "w", encoding="utf-8") as f:
-            f.write(text)
-        sents = r.get("sentence_info") or []
-        srt_path = os.path.join(d, f"{bvid}_转写.srt")
-        srt_src = ""
-        if sents:
-            blocks = []
-            for i, s in enumerate(sents, 1):
-                blocks.append(f"{i}\n{ms2srt(s['start'])} --> {ms2srt(s['end'])}\n{s['text']}\n")
-            with open(srt_path, "w", encoding="utf-8") as f:
-                f.write("\n".join(blocks))
-            srt_src = "句级时间戳"
-        else:
-            srt = build_srt(text, r.get("timestamp"))
-            if srt:
+        try:
+            print(f"[{bvid}] ASR 开始...", flush=True)
+            res = model.generate(input=tmp, batch_size_s=300, hotword="")
+            r = res[0]
+            text = r.get("text", "")
+            with open(os.path.join(d, f"{bvid}_转写.txt"), "w", encoding="utf-8") as f:
+                f.write(text)
+            sents = r.get("sentence_info") or []
+            srt_path = os.path.join(d, f"{bvid}_转写.srt")
+            srt_src = ""
+            if sents:
+                blocks = []
+                for i, s in enumerate(sents, 1):
+                    blocks.append(f"{i}\n{ms2srt(s['start'])} --> {ms2srt(s['end'])}\n{s['text']}\n")
                 with open(srt_path, "w", encoding="utf-8") as f:
-                    f.write(srt)
-                srt_src = "字级时间戳合成"
-                print(f"[{bvid}] SRT 由字级时间戳合成", flush=True)
+                    f.write("\n".join(blocks))
+                srt_src = "句级时间戳"
             else:
-                print(f"[{bvid}] 无法合成 SRT（时间戳缺失或无法对齐），仅输出 txt", flush=True)
-        print(f"[{bvid}] 完成：{len(text)} 字，SRT={srt_src or '无'}", flush=True)
-        os.remove(tmp)
+                srt = build_srt(text, r.get("timestamp"))
+                if srt:
+                    with open(srt_path, "w", encoding="utf-8") as f:
+                        f.write(srt)
+                    srt_src = "字级时间戳合成"
+                    print(f"[{bvid}] SRT 由字级时间戳合成", flush=True)
+                else:
+                    print(f"[{bvid}] 无法合成 SRT（时间戳缺失或无法对齐），仅输出 txt", flush=True)
+            print(f"[{bvid}] 完成：{len(text)} 字，SRT={srt_src or '无'}", flush=True)
+        finally:
+            if os.path.exists(tmp):
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
 
 
 if __name__ == "__main__":

@@ -157,5 +157,50 @@ class TestEnhancements(unittest.TestCase):
                     self.assertIn("base_out", loaded["media_dir"])
 
 
+class TestCliRobustness(unittest.TestCase):
+    def test_help_does_not_load_config(self) -> None:
+        with mock.patch.object(app, "load_config") as lc:
+            with self.assertRaises(SystemExit) as cm:
+                app.main(["--help"])
+            self.assertEqual(cm.exception.code, 0)
+            lc.assert_not_called()
+
+    def test_find_up_no_args_exits_2(self) -> None:
+        import find_up
+
+        with mock.patch.object(sys, "argv", ["find_up.py"]):
+            with self.assertRaises(SystemExit) as cm:
+                find_up.main()
+            self.assertEqual(cm.exception.code, 2)
+
+    def test_srt_outline_hints_platform_srt(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            outdir = Path(td)
+            bvid = "BV1xx411c7mD"
+            srt = outdir / f"{bvid}.zh-CN.srt"
+            srt.write_text(
+                "1\n00:01:05,000 --> 00:01:08,000\n平台字幕第一句\n\n"
+                "2\n00:02:00,000 --> 00:02:03,000\n平台字幕第二句\n",
+                encoding="utf-8",
+            )
+            hints = app._srt_outline_hints(outdir, bvid)
+            self.assertTrue(hints)
+            self.assertIn("01:05", hints[0])
+            self.assertIn("平台字幕第一句", hints[0])
+
+    def test_skip_comments_note_in_draft(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            outdir = Path(td)
+            bvid = "BV1xx411c7mD"
+            (outdir / f"{bvid}_meta.json").write_text(
+                '{"bvid":"%s","title":"t","owner":"u","url":"https://x"}' % bvid,
+                encoding="utf-8",
+            )
+            path = app._write_draft_card(outdir, bvid, skip_comments=True)
+            text = path.read_text(encoding="utf-8")
+            self.assertIn("已跳过（--skip-comments）", text)
+            self.assertNotIn("评论区未取到", text)
+
+
 if __name__ == "__main__":
     unittest.main()

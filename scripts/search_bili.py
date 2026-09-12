@@ -39,7 +39,7 @@ def main() -> None:
     if not results:
         raise SystemExit("无搜索结果，试试去掉标点/换关键词")
     for r in results[:n]:
-        if r.get("type") not in (None, "video", ""+"video"):
+        if r.get("type") not in (None, "video"):
             continue
         print(f"{r.get('bvid')} | {r.get('author')} | 播放{r.get('play')} | {r.get('duration')} | {clean_title(r.get('title',''))}")
 

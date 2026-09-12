@@ -48,12 +48,19 @@ def http_get(url: str, headers: dict, retries: int = 3) -> bytes:
             req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=20) as r:
                 return r.read()
-        except urllib.error.HTTPError as e:
+        except (urllib.error.HTTPError, urllib.error.URLError) as e:
             last = e
-            if e.code in (412, 429) or e.code >= 500:
-                time.sleep(15 * (attempt + 1))
+            if isinstance(e, urllib.error.HTTPError):
+                if e.code in (412, 429) or e.code >= 500:
+                    wait = 15 * (attempt + 1)
+                    print(f"[http] HTTP {e.code}，退避 {wait}s 后重试({attempt + 1}/{retries})...", flush=True)
+                    time.sleep(wait)
+                else:
+                    raise
             else:
-                raise
+                wait = 15 * (attempt + 1)
+                print(f"[http] 网络错误 {e}，退避 {wait}s 后重试({attempt + 1}/{retries})...", flush=True)
+                time.sleep(wait)
     raise last
 
 

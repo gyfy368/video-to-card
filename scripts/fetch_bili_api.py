@@ -54,19 +54,24 @@ def load_cookies(jar_path: str) -> str:
 
 
 def http_json(url: str, headers: dict) -> dict:
-    """单请求；412 时静默 60s 仅重试一次。"""
+    """单请求；412 / 网络错误时静默 60s 仅重试一次。"""
+    last_err = None
     for attempt in range(2):
         try:
             req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=30) as r:
                 return json.loads(r.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            if e.code == 412 and attempt == 0:
+        except (urllib.error.HTTPError, urllib.error.URLError) as e:
+            last_err = e
+            if isinstance(e, urllib.error.HTTPError) and e.code == 412 and attempt == 0:
                 print("[api] 412，静默 60s 后单次重试...", flush=True)
+                time.sleep(60)
+            elif isinstance(e, urllib.error.URLError) and attempt == 0:
+                print(f"[api] 网络错误 {e}，静默 60s 后单次重试...", flush=True)
                 time.sleep(60)
             else:
                 raise
-    raise SystemExit(f"请求失败: {url}")
+    raise SystemExit(f"请求失败: {url} ({last_err})")
 
 
 def wbi_sign(params: dict) -> dict:
@@ -125,11 +130,15 @@ def run(cmd: list[str]) -> None:
 
 
 def main() -> None:
-    args = sys.argv[1:]
-    if not args:
-        raise SystemExit(__doc__)
-    src = args[0]
-    cli_out = args[args.index("--out") + 1] if "--out" in args else None
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="B站直连 API 抓取（风控期备用通道）",
+    )
+    ap.add_argument("src", help="BV号或完整视频 URL")
+    ap.add_argument("--out", default=None, help="输出目录（默认 config media_dir 或 ./output）")
+    ns = ap.parse_args()
+    src = ns.src
+    cli_out = ns.out
     outdir = get_media_dir(cli_out) if cli_out else DEFAULT_OUT
     os.makedirs(outdir, exist_ok=True)
     m = re.search(r"BV[0-9A-Za-z]{10}", src)

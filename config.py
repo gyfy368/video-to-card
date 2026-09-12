@@ -14,7 +14,7 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DEFAULTS: dict[str, Any] = {
     "media_dir": "./output",
-    # Keep empty in code; put personal UP lists only in config.yaml / config.example.yaml
+    # Keep empty in code; put personal UP lists only in local config.yaml
     "preferred_ups": [],
     "obsidian_vault": "",
     "asr": {

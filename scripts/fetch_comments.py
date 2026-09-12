@@ -9,6 +9,8 @@ import argparse
 import json
 import os
 import sys
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -22,7 +24,6 @@ if _SCRIPT_DIR not in sys.path:
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from fetch_bili import JAR, ensure_jar  # noqa: E402  同目录复用 cookie 引导
 from config import get_media_dir  # noqa: E402
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -35,12 +36,29 @@ def get_json(url: str, cookie: str = "") -> dict:
     headers = {"User-Agent": UA}
     if cookie:
         headers["Cookie"] = cookie
-    req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, timeout=20) as r:
-        return json.loads(r.read().decode("utf-8"))
+    last_err = None
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=20) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except (urllib.error.HTTPError, urllib.error.URLError) as e:
+            last_err = e
+            if isinstance(e, urllib.error.HTTPError):
+                if e.code in (412, 429) or e.code >= 500:
+                    wait = 10 * (attempt + 1)
+                    print(f"[comments] HTTP {e.code}，退避 {wait}s 后重试({attempt + 1}/3)...", flush=True)
+                    time.sleep(wait)
+                else:
+                    raise
+            else:
+                wait = 10 * (attempt + 1)
+                print(f"[comments] 网络错误 {e}，退避 {wait}s 后重试({attempt + 1}/3)...", flush=True)
+                time.sleep(wait)
+    raise SystemExit(f"评论接口请求失败: {url} ({last_err})")
 
 
-def get_aid(bvid: str, cookie: str) -> int:
+def get_aid(bvid: str) -> int:
     # 2026-09-06 实测 archive/stat 已 404 下线；view 接口裸 UA 仍可用，作首选
     d = get_json(f"https://api.bilibili.com/x/web-interface/view?bvid={bvid}")
     if d.get("code") == 0:
@@ -111,9 +129,8 @@ def main() -> None:
     bvid = m.group(0)
     args.out = get_media_dir(args.out) if args.out else DEFAULT_OUT
     os.makedirs(args.out, exist_ok=True)
-    cookie = ensure_jar(JAR)
 
-    aid = get_aid(bvid, cookie)
+    aid = get_aid(bvid)
     print(f"[aid] {bvid} -> {aid}")
     replies = fetch_replies(aid, args.limit)
     if not replies:

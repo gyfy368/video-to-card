@@ -1,6 +1,6 @@
 # video-to-card
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10–3.12](https://img.shields.io/badge/python-3.10%E2%80%933.12-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![FunASR](https://img.shields.io/badge/ASR-FunASR%20Paraformer-orange.svg)](https://github.com/modelscope/FunASR)
 [![yt-dlp](https://img.shields.io/badge/download-yt--dlp-green.svg)](https://github.com/yt-dlp/yt-dlp)
@@ -8,6 +8,11 @@
 把 B 站（及其他 yt-dlp 支持的平台）视频，变成可直接织入 **Obsidian** 图谱的**音视频文献卡草案**。本项目专为 **Obsidian + 卡片盒笔记法（Zettelkasten）** 设计与优化——这是相对普通「视频爬取 / 转写工具」的核心差异：产物不是一堆死文本，而是可双向链接、可 Dataview 查询、可沉淀为永久认知的活卡片。
 
 **双模开源**：既是独立终端 CLI，也是 Cursor / Claude Code / Codex 可用的 Agent Skill。
+
+> **GitHub 仓库元信息（便于复制）**
+>
+> - **Description**：`Bilibili → transcript/comments → Obsidian Zettelkasten literature cards (CLI + Agent Skill)`
+> - **Topics**（逗号分隔，粘贴到 GitHub Topics）：`bilibili, obsidian, zettelkasten, funasr, yt-dlp, agent-skill, claude-code, literature-notes`
 
 ---
 
@@ -215,14 +220,16 @@ copy config.example.yaml config.yaml          # Windows
 | 字段 | 说明 |
 |------|------|
 | `media_dir` | 默认输出目录（相对路径相对**仓库根**解析，默认 `./output`） |
-| `preferred_ups` | 按名称搜索时优先核对的 UP 主（代码默认为空列表，示例见 `config.example.yaml`） |
+| `preferred_ups` | 按名称搜索时优先核对的 UP 主（默认为空；在本地 `config.yaml` 填写） |
 | `obsidian_vault` | 可选：你的 Obsidian 库路径（Agent 入库时使用） |
 | `asr.*` | FunASR 模型名 |
+
+> **路径提示**：配置里的相对 `media_dir` 相对**仓库根**解析；CLI 的 `--out` 相对**当前 shell 工作目录**（CWD）。Agent 请传绝对路径。
 
 Cookie（多数公开内容可不需要）：
 
 ```bash
-copy scripts\jar.txt.example scripts\jar.txt
+copy scripts/jar.txt.example scripts/jar.txt
 # 按需填入浏览器导出的 Netscape cookie；勿提交到 git
 ```
 
@@ -303,8 +310,7 @@ video-to-card/
     ├── search_bili.py      # 关键词搜索
     ├── bili_space.py       # UP 空间列表
     ├── find_up.py
-    ├── jar.txt.example     # Cookie 模板（复制为 jar.txt）
-    └── jar.txt             # 本地 cookie（gitignored）
+    └── jar.txt.example     # Cookie 模板；复制为本地 jar.txt（不在仓库）
 ```
 
 ---
