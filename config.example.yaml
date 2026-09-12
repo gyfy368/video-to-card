@@ -1,0 +1,24 @@
+# Copy to config.yaml and adjust. config.yaml is gitignored.
+# 复制为 config.yaml 后按需修改（config.yaml 不会被 git 跟踪）。
+
+# Default media / working output directory
+media_dir: "./output"
+
+# Preferred Bilibili UP creators (used when searching by title)
+preferred_ups:
+  - "毛选思维"
+  - "一知君"
+  - "无限进化的Doria"
+  - "疯狂心理学"
+  - "亿点点心理学"
+  - "YouTube深度访谈"
+  - "歌白说Geslook"
+
+# Optional: path to your Obsidian vault (literature / permanent cards destination)
+# Leave empty to keep drafts only under media_dir.
+obsidian_vault: ""
+
+asr:
+  model: "paraformer-zh"
+  vad_model: "fsmn-vad"
+  punc_model: "ct-punc"

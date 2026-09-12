@@ -1,0 +1,14 @@
+# Netscape HTTP Cookie File
+# Copy this file to jar.txt (same directory) if you need authenticated Bilibili access.
+#
+# How to use:
+#   1. Copy:  copy jar.txt.example jar.txt   (Windows)  or  cp jar.txt.example jar.txt
+#   2. Export cookies from your browser for bilibili.com (e.g. "Get cookies.txt LOCALLY" extension)
+#      and paste them below, OR leave empty — scripts can auto-bootstrap anonymous buvid cookies.
+#   3. Never commit jar.txt (it is listed in .gitignore).
+#
+# Format (tab-separated):
+# domain  flag  path  secure  expiration  name  value
+#
+# Example line (replace with real values from your browser export):
+# .bilibili.com	TRUE	/	FALSE	1893456000	SESSDATA	your_sessdata_here

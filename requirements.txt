@@ -1,0 +1,11 @@
+# Default install: base (CLI fetch/search) + optional ASR stack.
+# Prefer installing in two steps for clearer CPU/GPU control:
+#   pip install -r requirements-base.txt
+#   pip install -r requirements-asr.txt
+#
+# Python: 3.10–3.12 recommended (FunASR / torch).
+# GPU: install matching torch/torchaudio from https://pytorch.org first,
+# then: pip install -r requirements-asr.txt
+
+-r requirements-base.txt
+-r requirements-asr.txt

@@ -1,0 +1,45 @@
+# Cookies / secrets — never commit
+scripts/jar.txt
+jar.txt
+.env
+config.local.yaml
+config.yaml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Media outputs
+*.wav
+*.m4s
+*.m4a
+*.mp4
+*.webm
+*.aac
+*.mp3
+*.opus
+
+# Dynamic transcripts and caches
+*.srt
+*.vtt
+*_转写.txt
+*_转写.srt
+*_comments.txt
+*_meta.json
+*.info.json
+*_subtitle.txt
+*_文献卡草案.md
+
+# Working directories
+output/
+.cache/
+media/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Local-only review doc — never commit
+提交前审视文档.md
