@@ -38,6 +38,8 @@ Vault 连接：在 `config.yaml` 设置 `obsidian_vault`（见 `config.example.y
 - **禁止**依赖 Agent 当前工作目录写相对路径 `./output`。
 - 媒体与草案目录 = `config.yaml` 的 `media_dir`（由 `config.py` 相对 `$SKILL_DIR` 解析为绝对路径）。未配置时默认为 `$SKILL_DIR/output`。
 - 所有脚本调用优先：`python $SKILL_DIR/main.py … --out <绝对路径>`，或先 `cd $SKILL_DIR` 再跑命令。
+- **不要让用户先去技能目录执行 `pip install -r requirements-base.txt`。** 第一次 `search` / `space` / `process` 时，程序会自己安装这三个小依赖。只有输出明确写了缺少 Python 或基础依赖没装上时，才把那句话告诉用户。
+- 无字幕且用户明确要转写时，才说明需要 `pip install -r requirements-asr.txt`。不要默认要求安装本地语音模型。
 - 合规与 Cookie：见仓库根 `NOTICE.md` / `SECURITY.md`。
 
 ## 铁律（先于一切）

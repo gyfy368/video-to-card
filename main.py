@@ -24,10 +24,37 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 ROOT = Path(__file__).resolve().parent
 SCRIPTS = ROOT / "scripts"
+BASE_REQ = ROOT / "requirements-base.txt"
+BASE_MODULES = ("yt_dlp", "yaml", "imageio_ffmpeg")
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from config import get_media_dir, get_preferred_ups, load_config  # noqa: E402
+
+
+def missing_base_modules() -> list[str]:
+    missing: list[str] = []
+    for name in BASE_MODULES:
+        try:
+            __import__(name)
+        except ImportError:
+            missing.append(name)
+    return missing
+
+
+def ensure_base_deps() -> None:
+    """Install yt-dlp, PyYAML, and imageio-ffmpeg when any of them is missing."""
+    if not missing_base_modules():
+        return
+    print("正在安装基础依赖（下视频、读配置、ffmpeg）…", flush=True)
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-r", str(BASE_REQ)],
+    )
+    if result.returncode != 0 or missing_base_modules():
+        raise SystemExit(
+            "基础依赖没装上。本机需要已安装 Python 3.10–3.12，并且 pip 可用。\n"
+            f"也可手动执行：{sys.executable} -m pip install -r {BASE_REQ}"
+        )
 
 
 def _run_script(script_name: str, args: list[str]) -> int:
@@ -311,9 +338,15 @@ def build_parser() -> argparse.ArgumentParser:
             "  python main.py search \"关键词\" --limit 5\n"
             "  python main.py space 12345678 --pages 2\n"
             "\n"
-            "配置 / Config: 复制 config.example.yaml → config.yaml\n"
+            "第一次 search / space / process 会自动安装基础依赖。\n"
+            "配置 / Config: 复制 config.example.yaml → config.yaml（可选）\n"
             "Cookie: 复制 scripts/jar.txt.example → scripts/jar.txt（可选）"
         ),
+    )
+    p.add_argument(
+        "--no-install",
+        action="store_true",
+        help="不自动安装基础依赖 / Do not auto-install base dependencies",
     )
     sub = p.add_subparsers(dest="command", required=True)
 
@@ -361,6 +394,8 @@ def main(argv: list[str] | None = None) -> int:
     # Parse first so `python main.py --help` works even if PyYAML/config is broken.
     parser = build_parser()
     args = parser.parse_args(argv)
+    if not args.no_install:
+        ensure_base_deps()
     return int(args.func(args) or 0)
 
 

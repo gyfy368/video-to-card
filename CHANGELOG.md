@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- First `search` / `space` / `process` auto-installs base deps; `--help` and `--no-install` skip that. README no longer asks users to pip install before use.
 - README Quick Start is now skill-install plus base deps only; extra commands and config are marked skippable.
 - README: document `npx skills add gyfy368/video-to-card` as the primary Agent Skill install path; keep manual copy as the fallback without Node.js.
 - README: put Quick Start first; `config.yaml` is optional and no longer a step before install.

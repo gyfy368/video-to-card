@@ -13,25 +13,17 @@
 
 ## 快速开始 Quick Start
 
-### 1. 安装 Agent 技能
-
-需要 Node.js（自带 `npx`）：
+需要 Node.js（自带 `npx`）。本机需要已安装 Python。
 
 ```bash
 npx skills add gyfy368/video-to-card -g -a cursor -y
 ```
 
-### 2. 安装基础依赖，把视频交给 Agent
+然后把 BV 号交给 Agent，例如：「帮我把 BV1xxxxxxxx 整理成文献卡。」
 
-在技能目录里执行：
+第一次抓视频时，程序会自己装上下载和 ffmpeg 这几个小工具。你不用再进入技能目录敲安装命令。
 
-```bash
-pip install -r requirements-base.txt
-```
-
-然后把 BV 号交给 Agent 即可，例如：「帮我把 BV1xxxxxxxx 整理成文献卡」。
-
-已有字幕的视频不需要本地语音转写。本地 ASR（`pip install -r requirements-asr.txt`）可选，可跳过；ffmpeg 已由 `imageio-ffmpeg` 一并带上，不必单独安装。
+已有字幕的视频不需要本地语音转写。那个大模型可以跳过，说明在后面的「进阶（可跳过）」。
 
 ---
 
@@ -178,7 +170,9 @@ created: 2026-09-12
 
 没有 Node.js 时，把本仓库复制或软链到 `~/.cursor/skills/video-to-card/`。
 
-技能包不含 Python 依赖，也不含 FunASR 或 Cookie。CPU 直接装 `requirements-asr.txt` 即可；GPU 请先按 [pytorch.org](https://pytorch.org) 的 CUDA 版本安装 `torch` / `torchaudio`，再装其余包。
+自动安装失败时，可以手动执行 `python -m pip install -r requirements-base.txt`。不想自动安装时，在子命令前加 `--no-install`。
+
+本地语音转写可选：`pip install -r requirements-asr.txt`。CPU 直接装即可；GPU 请先按 [pytorch.org](https://pytorch.org) 的 CUDA 版本安装 `torch` / `torchaudio`，再装其余包。ffmpeg 已包含在基础依赖里，不必单独安装。
 
 ### 更多命令
 

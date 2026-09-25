@@ -2,6 +2,7 @@
 """Core unit tests for video-to-card (stdlib unittest; no pytest required)."""
 from __future__ import annotations
 
+import argparse
 import os
 import sys
 import tempfile
@@ -164,6 +165,42 @@ class TestCliRobustness(unittest.TestCase):
                 app.main(["--help"])
             self.assertEqual(cm.exception.code, 0)
             lc.assert_not_called()
+
+    def test_help_does_not_install_base_deps(self) -> None:
+        with mock.patch.object(app, "ensure_base_deps") as ensure:
+            with self.assertRaises(SystemExit) as cm:
+                app.main(["--help"])
+            self.assertEqual(cm.exception.code, 0)
+            ensure.assert_not_called()
+
+    def test_no_install_skips_base_deps(self) -> None:
+        parser = mock.Mock()
+        parser.parse_args.return_value = argparse.Namespace(no_install=True, func=lambda _args: 0)
+        with mock.patch.object(app, "build_parser", return_value=parser):
+            with mock.patch.object(app, "ensure_base_deps") as ensure:
+                self.assertEqual(app.main(["--no-install", "search", "x"]), 0)
+                ensure.assert_not_called()
+
+    def test_ensure_installs_only_when_missing(self) -> None:
+        with mock.patch.object(app, "missing_base_modules", side_effect=[["yt_dlp"], []]):
+            with mock.patch.object(app.subprocess, "run", return_value=mock.Mock(returncode=0)) as run:
+                app.ensure_base_deps()
+        cmd = run.call_args.args[0]
+        self.assertEqual(cmd[:4], [sys.executable, "-m", "pip", "install"])
+        self.assertTrue(str(cmd[-1]).endswith("requirements-base.txt"))
+
+    def test_ensure_skips_pip_when_present(self) -> None:
+        with mock.patch.object(app, "missing_base_modules", return_value=[]):
+            with mock.patch.object(app.subprocess, "run") as run:
+                app.ensure_base_deps()
+                run.assert_not_called()
+
+    def test_ensure_failure_is_plain_language(self) -> None:
+        with mock.patch.object(app, "missing_base_modules", return_value=["yaml"]):
+            with mock.patch.object(app.subprocess, "run", return_value=mock.Mock(returncode=1)):
+                with self.assertRaises(SystemExit) as cm:
+                    app.ensure_base_deps()
+        self.assertIn("Python 3.10", str(cm.exception))
 
     def test_find_up_no_args_exits_2(self) -> None:
         import find_up
