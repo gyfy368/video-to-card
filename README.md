@@ -5,28 +5,88 @@
 [![FunASR](https://img.shields.io/badge/ASR-FunASR%20Paraformer-orange.svg)](https://github.com/modelscope/FunASR)
 [![yt-dlp](https://img.shields.io/badge/download-yt--dlp-green.svg)](https://github.com/yt-dlp/yt-dlp)
 
-把 B 站（及其他 yt-dlp 支持的平台）视频，变成可直接织入 **Obsidian** 图谱的**音视频文献卡草案**。本项目专为 **Obsidian + 卡片盒笔记法（Zettelkasten）** 设计与优化——这是相对普通「视频爬取 / 转写工具」的核心差异：产物不是一堆死文本，而是可双向链接、可 Dataview 查询、可沉淀为永久认知的活卡片。
+把 B 站视频变成可织入 **Obsidian** 的音视频文献卡草案。命令行能直接跑，也能装成 Cursor / Claude Code / Codex 的 Agent Skill。
 
-**双模开源**：既是独立终端 CLI，也是 Cursor / Claude Code / Codex 可用的 Agent Skill。
-
-> **GitHub 仓库元信息（便于复制）**
->
-> - **Description**：`Bilibili → transcript/comments → Obsidian Zettelkasten literature cards (CLI + Agent Skill)`
-> - **Topics**（逗号分隔，粘贴到 GitHub Topics）：`bilibili, obsidian, zettelkasten, funasr, yt-dlp, agent-skill, claude-code, literature-notes`
+只处理你有权观看的视频。约束见 [NOTICE.md](NOTICE.md)。
 
 ---
 
-## Legal & Compliance
+## 快速开始 Quick Start
 
-> **请先阅读 [NOTICE.md](NOTICE.md)。** 使用本工具即表示你理解并同意下列约束。
+不用先写配置文件。没有 `config.yaml` 时，结果写在仓库下的 `output/`。
 
-- **只下载你有合法观看权限的内容**；勿用于批量盗链、搬运、再分发或任何形式的大规模盗版。
-- **转写稿与评论**版权归原作者 / 平台所有；文献卡草案若含此类文本，**不要提交到公开仓库**。
-- 文档中的评论示例须**脱敏**（如 `@用户A`），勿粘贴真实用户名。
-- B 站 **WBI 签名为逆向兼容实现**，平台变更后可能随时失效，维护成本高；限流退避仅为尽力而为。
-- Cookie / 账号安全见 [SECURITY.md](SECURITY.md)。
+### 命令行
 
-本项目**仅供学习与个人知识整理**。MIT 许可覆盖的是本仓库源代码，**不**授予第三方音视频或评论文本的权利。
+需要 Python 3.10–3.12，以及 ffmpeg（已在依赖里带 `imageio-ffmpeg`）。
+
+```bash
+pip install -r requirements-base.txt
+python main.py process BV1xxxxxxxx
+```
+
+要本地语音转写（体积大，可选）：
+
+```bash
+pip install -r requirements-asr.txt
+```
+
+CPU 直接装上面那行即可。GPU 请先按 [pytorch.org](https://pytorch.org) 的 CUDA 版本安装 `torch` / `torchaudio`，再装 `requirements-asr.txt` 里其余的包。
+
+### 装成 Agent 技能
+
+需要 Node.js（自带 `npx`）。下面这条会跳过安装器的询问，装到用户目录并指定 Cursor：
+
+```bash
+npx skills add gyfy368/video-to-card -g -a cursor -y
+```
+
+技能包不含 Python 依赖，也不含 FunASR 或 Cookie。装完后仍要在技能目录里执行上面的 `pip install`。
+
+没有 Node.js 时，把本仓库复制或软链到 `~/.cursor/skills/video-to-card/`。
+
+### 更多命令
+
+```bash
+python main.py process https://www.bilibili.com/video/BVxxx --out ./output
+python main.py process BVxxx --skip-asr --skip-comments
+python main.py process BVxxx --strict
+python main.py search "关键词" --limit 5
+python main.py space 12345678 --pages 1
+python main.py --help
+python -m unittest discover tests
+```
+
+产物在 `output/`（或你传入的 `--out`）：
+
+- `<bvid>_meta.json`
+- `<bvid>_audio16k.wav` / `<bvid>_subtitle.txt`（若有）
+- `<bvid>_转写.txt` + `<bvid>_转写.srt`
+- `<bvid>_comments.txt`
+- **`<bvid>_文献卡草案.md`**
+
+---
+
+## 可选配置
+
+上面的安装和第一条命令都不需要这一节。只有你想改默认行为时再做。
+
+复制模板：
+
+```bash
+copy config.example.yaml config.yaml          # Windows
+# cp config.example.yaml config.yaml         # macOS / Linux
+```
+
+| 字段 | 作用 |
+|------|------|
+| `media_dir` | 默认输出目录。不写则用 `./output`（相对仓库根） |
+| `preferred_ups` | 按标题搜索时优先核对的 UP 主。不写则为空 |
+| `obsidian_vault` | 你的 Obsidian 库路径。不写则草案留在 `output/`，自己移入库 |
+| `asr.*` | FunASR 模型名 |
+
+`config.yaml` 已被 gitignore，不要把个人库路径提交到公开仓库。CLI 的 `--out` 相对当前终端目录；Agent 请传绝对路径。
+
+公开视频一般不用 Cookie。只有登录才可见的内容，才把 `scripts/jar.txt.example` 复制为 `scripts/jar.txt`。说明见 [SECURITY.md](SECURITY.md)。
 
 ---
 
@@ -163,142 +223,7 @@ created: 2026-09-12
 
 ### 连接 Obsidian Vault
 
-在仓库根目录复制并编辑配置：
-
-```bash
-copy config.example.yaml config.yaml          # Windows
-# cp config.example.yaml config.yaml         # macOS / Linux
-```
-
-设置 `obsidian_vault` 为你的库根目录（绝对路径）：
-
-```yaml
-# config.yaml
-media_dir: "./output"
-obsidian_vault: "D:/path/to/your/ObsidianVault"   # 留空则草案只留在 media_dir
-```
-
-- **已配置**：Agent / 工作流在用户**批准入库**后，将文献卡写入 vault 文献区，永久卡写入永久卡区（具体子目录随你的库结构；常见为 `30-参考资料与文献库/音视频文献卡/` 与 `10-永久卡片(核心认知库)/`）。
-- **未配置**：流水线仍生成 `<bvid>_文献卡草案.md` 于 `media_dir`，由你手动移入 Obsidian。
-- `config.yaml` 已被 gitignore，勿把个人库路径提交到公开仓库。
-
----
-
-## 快速开始 Quick Start
-
-### 1. 依赖
-
-**Python 3.10–3.12**（推荐；FunASR / PyTorch 在此区间兼容性最好）。
-
-```bash
-# 必装：抓取 / 搜索 / CLI
-pip install -r requirements-base.txt
-
-# 可选：本地 ASR（体积大）
-pip install -r requirements-asr.txt
-
-# 或一次装齐（等同上面两步）
-pip install -r requirements.txt
-```
-
-**PyTorch CPU vs GPU**
-
-- **CPU**：直接 `pip install -r requirements-asr.txt` 通常会拉取默认 CPU 轮子即可。
-- **GPU**：先到 [pytorch.org](https://pytorch.org) 按 CUDA 版本安装匹配的 `torch` / `torchaudio`，再安装 `requirements-asr.txt` 中的其余包（`modelscope`、`funasr`），避免被默认 CPU 轮子覆盖。
-
-系统需可用 **ffmpeg**（PATH；Windows 上 winget Links；或 `imageio-ffmpeg`，已列入 `requirements-base.txt`）。
-
-### 2. 配置（可选）
-
-```bash
-copy config.example.yaml config.yaml          # Windows
-# cp config.example.yaml config.yaml         # macOS / Linux
-```
-
-主要字段：
-
-| 字段 | 说明 |
-|------|------|
-| `media_dir` | 默认输出目录（相对路径相对**仓库根**解析，默认 `./output`） |
-| `preferred_ups` | 按名称搜索时优先核对的 UP 主（默认为空；在本地 `config.yaml` 填写） |
-| `obsidian_vault` | 可选：你的 Obsidian 库路径（Agent 入库时使用） |
-| `asr.*` | FunASR 模型名 |
-
-> **路径提示**：配置里的相对 `media_dir` 相对**仓库根**解析；CLI 的 `--out` 相对**当前 shell 工作目录**（CWD）。Agent 请传绝对路径。
-
-Cookie（多数公开内容可不需要）：
-
-```bash
-copy scripts/jar.txt.example scripts/jar.txt
-# 按需填入浏览器导出的 Netscape cookie；勿提交到 git
-```
-
-### 3. CLI
-
-```bash
-# 一站式：抓取 → 评论 → ASR（无平台字幕时）→ 文献卡草案
-python main.py process BV1xxxxxxxx
-python main.py process https://www.bilibili.com/video/BVxxx --out ./output
-python main.py process BVxxx --skip-asr --skip-comments
-# 严格模式：评论或 ASR 失败则退出，不写空/残缺草案
-python main.py process BVxxx --strict
-
-# 搜索 / UP 空间
-python main.py search "关键词" --limit 5
-python main.py space 12345678 --pages 1
-
-python main.py --help
-```
-
-产物默认在配置解析后的 `media_dir`（通常为仓库下 `output/`）：
-
-- `<bvid>_meta.json`
-- `<bvid>_audio16k.wav` / `<bvid>_subtitle.txt`（若有）
-- `<bvid>_转写.txt` + `<bvid>_转写.srt`
-- `<bvid>_comments.txt`
-- **`<bvid>_文献卡草案.md`**
-
-底层脚本仍可单独调用：`scripts/fetch_bili.py`、`fetch_comments.py`、`run_asr.py` 等。
-
-### 4. 测试
-
-```bash
-python -m unittest discover tests
-```
-
----
-
-## Agent Skill 安装
-
-本仓库根目录即为 Skill 包（含 `SKILL.md` + `scripts/` + `references/`）。
-
-### 推荐：`npx skills`
-
-需要本机有 Node.js（自带 `npx`）。安装器是 npm 包 [`skills`](https://www.npmjs.com/package/skills)，技能文件从本 GitHub 仓库拉取，再接到 Cursor、Claude Code、Codex 等代理的技能目录。
-
-```bash
-# 安装到当前项目
-npx skills add gyfy368/video-to-card
-
-# 只查看仓库里有哪些技能，不安装
-npx skills add gyfy368/video-to-card --list
-
-# 装到用户目录，并指定 Cursor
-npx skills add gyfy368/video-to-card -g -a cursor -y
-```
-
-装完后还不能单独转写视频。请按上文「快速开始」执行 `pip install -r requirements-base.txt`（需要本地转写时再装 `requirements-asr.txt`），并把 `config.example.yaml` 复制为 `config.yaml`。技能包不含 FunASR 模型，也不含 Cookie。
-
-### 备用：手动复制
-
-没有 Node.js 时，把本文件夹复制或软链到 Agent 的 skills 目录，例如 Cursor 的 `~/.cursor/skills/video-to-card/`，或你所用 Agent 文档里扫描 `SKILL.md` 的目录。
-
-### 使用时
-
-1. 确保 Agent 能执行仓库内 `python main.py` / `scripts/*.py`。**输出目录必须使用 `config.media_dir`（绝对路径）或显式 `--out <绝对路径>`**，不要依赖 Agent 的当前工作目录。
-2. 在 `config.yaml` 中设置 `obsidian_vault`（若你希望 Agent 把批准后的卡片写入知识库），否则草案仅留在 `media_dir`。
-
-触发示例：用户说「把这个 B 站视频整理成卡片」「提取字幕做文献卡」「UP 主 + 标题找视频」等。
+在「可选配置」里填写 `obsidian_vault` 后，Agent 在你批准入库时把文献卡写入库内文献区，永久卡写入永久卡区。不填则草案留在 `output/`，自己移进 Obsidian。
 
 ---
 
@@ -332,6 +257,12 @@ video-to-card/
     ├── find_up.py
     └── jar.txt.example     # Cookie 模板；复制为本地 jar.txt（不在仓库）
 ```
+
+---
+
+## 合规
+
+本项目仅供学习与个人知识整理。只下载你有合法观看权限的内容。转写稿与评论不要提交到公开仓库。评论示例须脱敏。WBI 签名可能随平台更新失效。完整说明见 [NOTICE.md](NOTICE.md)，Cookie 见 [SECURITY.md](SECURITY.md)。
 
 ---
 
