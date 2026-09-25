@@ -13,80 +13,25 @@
 
 ## 快速开始 Quick Start
 
-不用先写配置文件。没有 `config.yaml` 时，结果写在仓库下的 `output/`。
+### 1. 安装 Agent 技能
 
-### 命令行
-
-需要 Python 3.10–3.12，以及 ffmpeg（已在依赖里带 `imageio-ffmpeg`）。
-
-```bash
-pip install -r requirements-base.txt
-python main.py process BV1xxxxxxxx
-```
-
-要本地语音转写（体积大，可选）：
-
-```bash
-pip install -r requirements-asr.txt
-```
-
-CPU 直接装上面那行即可。GPU 请先按 [pytorch.org](https://pytorch.org) 的 CUDA 版本安装 `torch` / `torchaudio`，再装 `requirements-asr.txt` 里其余的包。
-
-### 装成 Agent 技能
-
-需要 Node.js（自带 `npx`）。下面这条会跳过安装器的询问，装到用户目录并指定 Cursor：
+需要 Node.js（自带 `npx`）：
 
 ```bash
 npx skills add gyfy368/video-to-card -g -a cursor -y
 ```
 
-技能包不含 Python 依赖，也不含 FunASR 或 Cookie。装完后仍要在技能目录里执行上面的 `pip install`。
+### 2. 安装基础依赖，把视频交给 Agent
 
-没有 Node.js 时，把本仓库复制或软链到 `~/.cursor/skills/video-to-card/`。
-
-### 更多命令
+在技能目录里执行：
 
 ```bash
-python main.py process https://www.bilibili.com/video/BVxxx --out ./output
-python main.py process BVxxx --skip-asr --skip-comments
-python main.py process BVxxx --strict
-python main.py search "关键词" --limit 5
-python main.py space 12345678 --pages 1
-python main.py --help
-python -m unittest discover tests
+pip install -r requirements-base.txt
 ```
 
-产物在 `output/`（或你传入的 `--out`）：
+然后把 BV 号交给 Agent 即可，例如：「帮我把 BV1xxxxxxxx 整理成文献卡」。
 
-- `<bvid>_meta.json`
-- `<bvid>_audio16k.wav` / `<bvid>_subtitle.txt`（若有）
-- `<bvid>_转写.txt` + `<bvid>_转写.srt`
-- `<bvid>_comments.txt`
-- **`<bvid>_文献卡草案.md`**
-
----
-
-## 可选配置
-
-上面的安装和第一条命令都不需要这一节。只有你想改默认行为时再做。
-
-复制模板：
-
-```bash
-copy config.example.yaml config.yaml          # Windows
-# cp config.example.yaml config.yaml         # macOS / Linux
-```
-
-| 字段 | 作用 |
-|------|------|
-| `media_dir` | 默认输出目录。不写则用 `./output`（相对仓库根） |
-| `preferred_ups` | 按标题搜索时优先核对的 UP 主。不写则为空 |
-| `obsidian_vault` | 你的 Obsidian 库路径。不写则草案留在 `output/`，自己移入库 |
-| `asr.*` | FunASR 模型名 |
-
-`config.yaml` 已被 gitignore，不要把个人库路径提交到公开仓库。CLI 的 `--out` 相对当前终端目录；Agent 请传绝对路径。
-
-公开视频一般不用 Cookie。只有登录才可见的内容，才把 `scripts/jar.txt.example` 复制为 `scripts/jar.txt`。说明见 [SECURITY.md](SECURITY.md)。
+已有字幕的视频不需要本地语音转写。本地 ASR（`pip install -r requirements-asr.txt`）可选，可跳过；ffmpeg 已由 `imageio-ffmpeg` 一并带上，不必单独安装。
 
 ---
 
@@ -223,7 +168,60 @@ created: 2026-09-12
 
 ### 连接 Obsidian Vault
 
-在「可选配置」里填写 `obsidian_vault` 后，Agent 在你批准入库时把文献卡写入库内文献区，永久卡写入永久卡区。不填则草案留在 `output/`，自己移进 Obsidian。
+在「可选配置（可跳过）」里填写 `obsidian_vault` 后，Agent 在你批准入库时把文献卡写入库内文献区，永久卡写入永久卡区。不填则草案留在 `output/`，自己移进 Obsidian。
+
+---
+
+## 进阶（可跳过）
+
+命令行、搜索、自测与输出文件说明都不是入门必做。需要 Python 3.10–3.12。
+
+没有 Node.js 时，把本仓库复制或软链到 `~/.cursor/skills/video-to-card/`。
+
+技能包不含 Python 依赖，也不含 FunASR 或 Cookie。CPU 直接装 `requirements-asr.txt` 即可；GPU 请先按 [pytorch.org](https://pytorch.org) 的 CUDA 版本安装 `torch` / `torchaudio`，再装其余包。
+
+### 更多命令
+
+```bash
+python main.py process BV1xxxxxxxx
+python main.py process https://www.bilibili.com/video/BVxxx --out ./output
+python main.py process BVxxx --skip-asr --skip-comments
+python main.py process BVxxx --strict
+python main.py search "关键词" --limit 5
+python main.py space 12345678 --pages 1
+python main.py --help
+python -m unittest discover tests
+```
+
+产物在 `output/`（或你传入的 `--out`）：
+
+- `<bvid>_meta.json`
+- `<bvid>_audio16k.wav` / `<bvid>_subtitle.txt`（若有）
+- `<bvid>_转写.txt` + `<bvid>_转写.srt`
+- `<bvid>_comments.txt`
+- **`<bvid>_文献卡草案.md`**
+
+### 可选配置（可跳过）
+
+没有 `config.yaml` 时，草案写到 `output/`。只有你想改默认行为时再做。
+
+复制模板：
+
+```bash
+copy config.example.yaml config.yaml          # Windows
+# cp config.example.yaml config.yaml         # macOS / Linux
+```
+
+| 字段 | 作用 |
+|------|------|
+| `media_dir` | 默认输出目录。不写则用 `./output`（相对仓库根） |
+| `preferred_ups` | 按标题搜索时优先核对的 UP 主。不写则为空 |
+| `obsidian_vault` | 你的 Obsidian 库路径。不写则草案留在 `output/`，自己移入库 |
+| `asr.*` | FunASR 模型名 |
+
+`config.yaml` 已被 gitignore，不要把个人库路径提交到公开仓库。CLI 的 `--out` 相对当前终端目录；Agent 请传绝对路径。
+
+公开视频一般不用 Cookie。只有登录才可见的内容，才把 `scripts/jar.txt.example` 复制为 `scripts/jar.txt`。说明见 [SECURITY.md](SECURITY.md)。
 
 ---
 
