@@ -272,11 +272,31 @@ python -m unittest discover tests
 
 本仓库根目录即为 Skill 包（含 `SKILL.md` + `scripts/` + `references/`）。
 
-1. **Cursor / Claude Code / Codex**：将本文件夹复制或软链到 Agent skills 目录，例如：
-   - Cursor: `~/.cursor/skills/video-to-card/` 或项目内 skills 路径
-   - 或按你所用 Agent 文档配置 `SKILL.md` 扫描目录
-2. 确保 Agent 能执行仓库内 `python main.py` / `scripts/*.py`。**输出目录必须使用 `config.media_dir`（绝对路径）或显式 `--out <绝对路径>`**，不要依赖 Agent 的当前工作目录。
-3. 在 `config.yaml` 中设置 `obsidian_vault`（若你希望 Agent 把批准后的卡片写入知识库），否则草案仅留在 `media_dir`。
+### 推荐：`npx skills`
+
+需要本机有 Node.js（自带 `npx`）。安装器是 npm 包 [`skills`](https://www.npmjs.com/package/skills)，技能文件从本 GitHub 仓库拉取，再接到 Cursor、Claude Code、Codex 等代理的技能目录。
+
+```bash
+# 安装到当前项目
+npx skills add gyfy368/video-to-card
+
+# 只查看仓库里有哪些技能，不安装
+npx skills add gyfy368/video-to-card --list
+
+# 装到用户目录，并指定 Cursor
+npx skills add gyfy368/video-to-card -g -a cursor -y
+```
+
+装完后还不能单独转写视频。请按上文「快速开始」执行 `pip install -r requirements-base.txt`（需要本地转写时再装 `requirements-asr.txt`），并把 `config.example.yaml` 复制为 `config.yaml`。技能包不含 FunASR 模型，也不含 Cookie。
+
+### 备用：手动复制
+
+没有 Node.js 时，把本文件夹复制或软链到 Agent 的 skills 目录，例如 Cursor 的 `~/.cursor/skills/video-to-card/`，或你所用 Agent 文档里扫描 `SKILL.md` 的目录。
+
+### 使用时
+
+1. 确保 Agent 能执行仓库内 `python main.py` / `scripts/*.py`。**输出目录必须使用 `config.media_dir`（绝对路径）或显式 `--out <绝对路径>`**，不要依赖 Agent 的当前工作目录。
+2. 在 `config.yaml` 中设置 `obsidian_vault`（若你希望 Agent 把批准后的卡片写入知识库），否则草案仅留在 `media_dir`。
 
 触发示例：用户说「把这个 B 站视频整理成卡片」「提取字幕做文献卡」「UP 主 + 标题找视频」等。
 

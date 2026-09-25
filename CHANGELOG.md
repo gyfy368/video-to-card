@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- README: document `npx skills add gyfy368/video-to-card` as the primary Agent Skill install path; keep manual copy as the fallback without Node.js.
+
 ## v1.3.2 — 2026-09-12
 
 - Decouple `python main.py --help` from config / PyYAML loading.
